@@ -1,0 +1,7 @@
+[package]
+name = "rahashmap"
+version = "0.1.0"
+authors = ["Jonathan Behrens <fintelia@gmail.com>", "The Rust Project Developers"]
+
+[dependencies]
+rand = "0.4.2"
