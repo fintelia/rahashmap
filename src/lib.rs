@@ -9,7 +9,9 @@
 extern crate rand;
 
 mod table;
-pub mod map;
+mod map;
+
+pub use map::*;
 
 trait Recover<Q: ?Sized> {
     type Key;
