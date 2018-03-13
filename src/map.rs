@@ -1343,6 +1343,28 @@ where
             debug_assert!(elems_left == 0 || bucket.index() != start_index);
         }
     }
+
+    /// Remove the first element at or after `index` in the HashTable. Returns the element or None
+    /// if the HashTable is empty. Since indices in a HashTable are not deterministic, this function
+    /// effectively removes a random element.
+    pub fn remove_element_at_index(&mut self, index: usize) -> Option<(K, V)> {
+        if self.is_empty() {
+            return None;
+        }
+
+        let mut probe = Bucket::at_index(&mut self.table, index);
+        loop {
+            let empty = match probe.peek() {
+                Full(elem) => {
+                    let (k, v, _) = pop_internal(elem);
+                    return Some((k, v));
+                }
+                Empty(empty) => empty,
+            };
+
+            probe = empty.next();
+        }
+    }
 }
 
 impl<K, V, S> PartialEq for HashMap<K, V, S>
