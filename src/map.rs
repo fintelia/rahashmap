@@ -1345,9 +1345,9 @@ where
     }
 
     /// Remove the first element at or after `index` in the HashTable. Returns the element or None
-    /// if the HashTable is empty. Since indices in a HashTable are not deterministic, this function
+    /// if the HashTable is empty. Since indices in a HashTable are nondeterministic, this function
     /// effectively removes a random element.
-    pub fn remove_element_at_index(&mut self, index: usize) -> Option<(K, V)> {
+    pub fn remove_at_index(&mut self, index: usize) -> Option<(K, V)> {
         if self.is_empty() {
             return None;
         }
@@ -3569,4 +3569,20 @@ mod test_map {
         }));
         assert_eq!(hm.len(), 0);
     }
+
+    #[test]
+    fn test_remove_at_index() {
+        let mut m = HashMap::new();
+        assert_eq!(m.remove_at_index(0), None);
+        assert!(m.insert(1, 2).is_none());
+        assert_eq!(m.remove_at_index(5), Some((1,2)));
+        assert!(m.insert(2, 4).is_none());
+        assert!(m.insert(3, 8).is_none());
+        let v = m.remove_at_index(0).unwrap();
+        assert!(v == (2, 4) || v == (3, 8));
+        let w = m.remove_at_index(0).unwrap();
+        assert!(w == (2, 4) || w == (3, 8));
+        assert!(v != w);
+    }
+
 }
