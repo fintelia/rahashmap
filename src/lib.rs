@@ -14,6 +14,7 @@ mod table;
 mod map;
 
 pub use map::*;
+pub use table::{make_hash, SafeHash};
 
 trait Recover<Q: ?Sized> {
     type Key;

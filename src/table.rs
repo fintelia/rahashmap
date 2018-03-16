@@ -179,7 +179,7 @@ pub struct GapThenFull<K, V, M> {
 
 /// A hash that is not zero, since we use a hash of zero to represent empty
 /// buckets.
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Eq, Copy, Clone, PartialOrd, Ord)]
 pub struct SafeHash {
     hash: HashUint,
 }
@@ -187,15 +187,15 @@ pub struct SafeHash {
 impl SafeHash {
     /// Peek at the hash value, which is guaranteed to be non-zero.
     #[inline(always)]
-    pub fn inspect(&self) -> HashUint {
+    pub(crate) fn inspect(&self) -> HashUint {
         self.hash
     }
 
     #[inline(always)]
-    pub fn new(hash: u64) -> Self {
+    fn new(hash: u64) -> Self {
         // We need to avoid 0 in order to prevent collisions with
         // EMPTY_HASH. We can maintain our precious uniform distribution
-        // of initial indexes by unconditionally setting the MSB,
+        // of initial indexes by unconditionally setting the LSB,
         // effectively reducing the hashes by one bit.
         //
         // Truncate hash to fit in `HashUint`.
