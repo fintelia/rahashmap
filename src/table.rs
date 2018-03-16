@@ -114,7 +114,7 @@ impl TaggedHashUintPtr {
 /// when the RawTable is created and is accessible with the `tag` and `set_tag`
 /// functions.
 pub struct RawTable<K, V> {
-    capacity_mask: usize,
+    log2_capacity: u8,
     size: usize,
     hashes: TaggedHashUintPtr,
 
@@ -199,9 +199,8 @@ impl SafeHash {
         // effectively reducing the hashes by one bit.
         //
         // Truncate hash to fit in `HashUint`.
-        let hash_bits = size_of::<HashUint>() * 8;
         SafeHash {
-            hash: (1 << (hash_bits - 1)) | (hash as HashUint),
+            hash: (hash as HashUint) | 0x1,
         }
     }
 }
@@ -335,7 +334,8 @@ where
 
 impl<K, V, M: Deref<Target = RawTable<K, V>>> Bucket<K, V, M> {
     pub fn new(table: M, hash: SafeHash) -> Bucket<K, V, M> {
-        Bucket::at_index(table, hash.inspect() as usize)
+        let index = (*table).index_of_hash(hash);
+        Bucket::at_index(table, index)
     }
 
     pub fn new_from(r: RawBucket<K, V>, t: M) -> Bucket<K, V, M> {
@@ -349,7 +349,7 @@ impl<K, V, M: Deref<Target = RawTable<K, V>>> Bucket<K, V, M> {
             table.capacity() > 0,
             "Table should have capacity at this point"
         );
-        let ib_index = ib_index & table.capacity_mask;
+        let ib_index = ib_index & ((1 << table.log2_capacity) - 1);
         Bucket {
             raw: table.raw_bucket_at(ib_index),
             table,
@@ -416,12 +416,12 @@ impl<K, V, M: Deref<Target = RawTable<K, V>>> Bucket<K, V, M> {
 
     /// Modifies the bucket in place to make it point to the next slot.
     pub fn next(&mut self) {
-        self.raw.idx = self.raw.idx.wrapping_add(1) & self.table.capacity_mask;
+        self.raw.idx = self.raw.idx.wrapping_add(1) & ((1 << self.table.log2_capacity) - 1)
     }
 
     /// Modifies the bucket in place to make it point to the previous slot.
     pub fn prev(&mut self) {
-        self.raw.idx = self.raw.idx.wrapping_sub(1) & self.table.capacity_mask;
+        self.raw.idx = self.raw.idx.wrapping_sub(1) & ((1 << self.table.log2_capacity) - 1)
     }
 }
 
@@ -527,9 +527,10 @@ impl<K, V, M: Deref<Target = RawTable<K, V>>> FullBucket<K, V, M> {
     /// initial bucket", or DIB. Also known as "probe count".
     pub fn displacement(&self) -> usize {
         // Calculates the distance one has to travel when going from
-        // `hash mod capacity` onwards to `idx mod capacity`, wrapping around
+        // `index_of_hash(hash)` onwards to `idx mod capacity`, wrapping around
         // if the destination is not reached before the end of the table.
-        (self.raw.idx.wrapping_sub(self.hash().inspect() as usize)) & self.table.capacity_mask
+        let index = (*self.table).index_of_hash(self.hash());
+        self.raw.idx.wrapping_sub(index) & ((1 << self.table.log2_capacity) - 1)
     }
 
     #[inline]
@@ -751,7 +752,7 @@ impl<K, V> RawTable<K, V> {
         if capacity == 0 {
             return RawTable {
                 size: 0,
-                capacity_mask: capacity.wrapping_sub(1),
+                log2_capacity: 255,
                 hashes: TaggedHashUintPtr::new(EMPTY as *mut HashUint),
                 marker: marker::PhantomData,
             };
@@ -796,7 +797,7 @@ impl<K, V> RawTable<K, V> {
         let hashes = buffer as *mut HashUint;
 
         RawTable {
-            capacity_mask: capacity.wrapping_sub(1),
+            log2_capacity: (capacity - 1).count_ones() as u8,
             size: 0,
             hashes: TaggedHashUintPtr::new(hashes),
             marker: marker::PhantomData,
@@ -834,7 +835,11 @@ impl<K, V> RawTable<K, V> {
 
     /// The hashtable's capacity, similar to a vector's.
     pub fn capacity(&self) -> usize {
-        self.capacity_mask.wrapping_add(1)
+        if self.log2_capacity == 255 {
+            0
+        } else {
+            1 << self.log2_capacity
+        }
     }
 
     /// The number of elements ever `put` in the hashtable, minus the number
@@ -921,6 +926,11 @@ impl<K, V> RawTable<K, V> {
     /// Get the table tag
     pub fn tag(&self) -> bool {
         self.hashes.tag()
+    }
+
+    pub fn index_of_hash(&self, hash: SafeHash) -> usize {
+        let hash_bits = size_of::<HashUint>() * 8;
+        (hash.inspect() as usize) >> (hash_bits as u8 - self.log2_capacity)
     }
 }
 

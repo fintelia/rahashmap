@@ -830,7 +830,7 @@ where
                 Full(bucket) => {
                     let h = bucket.hash();
                     let (b, k, v) = bucket.take();
-                    self.insert_hashed_ordered(h, k, v);
+                    self.insert_hashed_nocheck(h, k, v);
                     if b.table().size() == 0 {
                         break;
                     }
