@@ -5,9 +5,11 @@
 #![feature(placement_new_protocol)]
 #![feature(ptr_internals)]
 #![feature(sip_hash_13)]
+#![feature(test)]
 
 extern crate rand;
 
+mod bench;
 mod table;
 mod map;
 
