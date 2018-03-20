@@ -187,7 +187,7 @@ pub struct SafeHash {
 impl SafeHash {
     /// Peek at the hash value, which is guaranteed to be non-zero.
     #[inline(always)]
-    pub(crate) fn inspect(&self) -> HashUint {
+    pub fn inspect(&self) -> HashUint {
         self.hash
     }
 
