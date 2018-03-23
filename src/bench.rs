@@ -63,8 +63,10 @@ fn find_existing(b: &mut Bencher) {
         m.insert(i, i);
     }
 
-    b.iter(|| for i in 1..1001 {
-        m.contains_key(&i);
+    b.iter(|| {
+        for i in 1..1001 {
+            m.contains_key(&i);
+        }
     });
 }
 
@@ -78,8 +80,10 @@ fn find_nonexisting(b: &mut Bencher) {
         m.insert(i, i);
     }
 
-    b.iter(|| for i in 1001..2001 {
-        m.contains_key(&i);
+    b.iter(|| {
+        for i in 1001..2001 {
+            m.contains_key(&i);
+        }
     });
 }
 

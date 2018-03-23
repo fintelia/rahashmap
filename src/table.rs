@@ -783,10 +783,9 @@ impl<K, V> RawTable<K, V> {
             .checked_add(size_of::<(K, V)>())
             .unwrap();
         assert!(
-            size
-                >= capacity
-                    .checked_mul(size_of_bucket)
-                    .expect("capacity overflow"),
+            size >= capacity
+                .checked_mul(size_of_bucket)
+                .expect("capacity overflow"),
             "capacity overflow"
         );
 
