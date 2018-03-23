@@ -3575,7 +3575,7 @@ mod test_map {
         let mut m = HashMap::new();
         assert_eq!(m.remove_at_index(0), None);
         assert!(m.insert(1, 2).is_none());
-        assert_eq!(m.remove_at_index(5), Some((1,2)));
+        assert_eq!(m.remove_at_index(5), Some((1, 2)));
         assert!(m.insert(2, 4).is_none());
         assert!(m.insert(3, 8).is_none());
         let v = m.remove_at_index(0).unwrap();
