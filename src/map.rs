@@ -596,6 +596,40 @@ where
         search_hashed_nonempty(&mut self.table, hash, |k| q.eq(k.borrow())).into_occupied_bucket()
     }
 
+    #[inline]
+    fn search_hashed_nocheck<'a, Q: ?Sized>(
+        &'a self,
+        hash: SafeHash,
+        q: &Q,
+    ) -> Option<FullBucket<K, V, &'a RawTable<K, V>>>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash,
+    {
+        if self.is_empty() {
+            return None;
+        }
+
+        search_hashed_nonempty(&self.table, hash, |k| q.eq(k.borrow())).into_occupied_bucket()
+    }
+
+    #[inline]
+    fn search_mut_hashed_nocheck<'a, Q: ?Sized>(
+        &'a mut self,
+        hash: SafeHash,
+        q: &Q,
+    ) -> Option<FullBucket<K, V, &'a mut RawTable<K, V>>>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash,
+    {
+        if self.is_empty() {
+            return None;
+        }
+
+        search_hashed_nonempty(&mut self.table, hash, |k| q.eq(k.borrow())).into_occupied_bucket()
+    }
+
     // The caller should ensure that invariants by Robin Hood Hashing hold
     // and that there's space in the underlying table.
     fn insert_hashed_ordered(&mut self, hash: SafeHash, k: K, v: V) {
@@ -1157,6 +1191,17 @@ where
         self.search(k).map(|bucket| bucket.into_refs().1)
     }
 
+    /// Same as `get()` but using the provided hash.
+    #[inline]
+    pub fn get_hashed_nocheck<Q: ?Sized>(&self, hash: SafeHash, k: &Q) -> Option<&V>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        self.search_hashed_nocheck(hash, k)
+            .map(|bucket| bucket.into_refs().1)
+    }
+
     /// Returns true if the map contains a value for the specified key.
     ///
     /// The key may be any borrowed form of the map's key type, but
@@ -1182,6 +1227,14 @@ where
         Q: Hash + Eq,
     {
         self.search(k).is_some()
+    }
+
+    pub fn contains_key_hashed_nocheck<Q: ?Sized>(&self, hash: SafeHash, k: &Q) -> bool
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        self.search_hashed_nocheck(hash, k).is_some()
     }
 
     /// Returns a mutable reference to the value corresponding to the key.
@@ -1211,6 +1264,17 @@ where
         Q: Hash + Eq,
     {
         self.search_mut(k).map(|bucket| bucket.into_mut_refs().1)
+    }
+
+    /// Same as `get_mut()` but using the provided hash.
+    #[inline]
+    pub fn get_mut_hashed_nocheck<Q: ?Sized>(&mut self, hash: SafeHash, k: &Q) -> Option<&mut V>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        self.search_mut_hashed_nocheck(hash, k)
+            .map(|bucket| bucket.into_mut_refs().1)
     }
 
     /// Inserts a key-value pair into the map.
@@ -1272,6 +1336,16 @@ where
         self.search_mut(k).map(|bucket| pop_internal(bucket).1)
     }
 
+    /// Same as `remove()` but using the provided hash.
+    pub fn remove_hashed_nocheck<Q: ?Sized>(&mut self, hash: SafeHash, k: &Q) -> Option<V>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        self.search_mut_hashed_nocheck(hash, k)
+            .map(|bucket| pop_internal(bucket).1)
+    }
+
     /// Removes a key from the map, returning the stored key and value if the
     /// key was previously in the map.
     ///
@@ -1301,6 +1375,22 @@ where
         Q: Hash + Eq,
     {
         self.search_mut(k).map(|bucket| {
+            let (k, v, _) = pop_internal(bucket);
+            (k, v)
+        })
+    }
+
+    /// Same as `remove_entry` but with the provided hash.
+    pub fn remove_entry_hashed_nocheck<Q: ?Sized>(
+        &mut self,
+        hash: SafeHash,
+        k: &Q,
+    ) -> Option<(K, V)>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        self.search_mut_hashed_nocheck(hash, k).map(|bucket| {
             let (k, v, _) = pop_internal(bucket);
             (k, v)
         })
