@@ -1043,6 +1043,15 @@ where
             .expect("unreachable")
     }
 
+    /// Same as `entry()` but use the provided hash instead of computing it from `key`.
+    pub fn entry_hashed_nocheck(&mut self, hash: SafeHash, key: K) -> Entry<K, V> {
+        // Gotta resize now.
+        self.reserve(1);
+        search_hashed(&mut self.table, hash, |q| q.eq(&key))
+            .into_entry(key)
+            .expect("unreachable")
+    }
+
     /// Returns the number of elements in the map.
     ///
     /// # Examples
@@ -3355,6 +3364,59 @@ mod test_map {
 
         // Inexistent key (insert)
         match map.entry(10) {
+            Occupied(_) => unreachable!(),
+            Vacant(view) => {
+                assert_eq!(*view.insert(1000), 1000);
+            }
+        }
+        assert_eq!(map.get(&10).unwrap(), &1000);
+        assert_eq!(map.len(), 6);
+    }
+
+    #[test]
+    fn test_entry_hashed_nocheck() {
+        let xs = [(1, 10), (2, 20), (3, 30), (4, 40), (5, 50), (6, 60)];
+
+        let mut map: HashMap<_, _> = xs.iter().cloned().collect();
+
+        let hasher = map.hasher().clone();
+        let hash = |k| ::table::make_hash(&hasher, &k);
+
+        // Existing key (insert)
+        match map.entry_hashed_nocheck(hash(1), 1) {
+            Vacant(_) => unreachable!(),
+            Occupied(mut view) => {
+                assert_eq!(view.get(), &10);
+                assert_eq!(view.insert(100), 10);
+            }
+        }
+        assert_eq!(map.get(&1).unwrap(), &100);
+        assert_eq!(map.len(), 6);
+
+        // Existing key (update)
+        match map.entry_hashed_nocheck(hash(2), 2) {
+            Vacant(_) => unreachable!(),
+            Occupied(mut view) => {
+                let v = view.get_mut();
+                let new_v = (*v) * 10;
+                *v = new_v;
+            }
+        }
+        assert_eq!(map.get(&2).unwrap(), &200);
+        assert_eq!(map.len(), 6);
+
+        // Existing key (take)
+        match map.entry_hashed_nocheck(hash(3), 3) {
+            Vacant(_) => unreachable!(),
+            Occupied(view) => {
+                assert_eq!(view.remove(), 30);
+            }
+        }
+        assert_eq!(map.get(&3), None);
+        assert_eq!(map.len(), 5);
+
+        // Inexistent key (insert)
+        match map.entry_hashed_nocheck(hash(10), 10) {
             Occupied(_) => unreachable!(),
             Vacant(view) => {
                 assert_eq!(*view.insert(1000), 1000);
