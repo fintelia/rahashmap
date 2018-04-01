@@ -1464,6 +1464,23 @@ where
             probe = empty.next();
         }
     }
+
+    /// Return a random element in the bucket at a specific index.
+    pub fn at_index(&self, index: usize) -> Option<(&K, &V)> {
+        if self.is_empty() {
+            return None;
+        }
+
+        let mut probe = Bucket::at_index(&self.table, index);
+        loop {
+            let empty = match probe.peek() {
+                Full(elem) => return Some(elem.into_refs()),
+                Empty(empty) => empty,
+            };
+
+            probe = empty.next();
+        }
+    }
 }
 
 impl<K, V, S> PartialEq for HashMap<K, V, S>
@@ -3737,4 +3754,14 @@ mod test_map {
         assert!(v != w);
     }
 
+    #[test]
+    fn test_at_index() {
+        let mut m = HashMap::new();
+        assert_eq!(m.at_index(0), None);
+        assert!(m.insert(1, 2).is_none());
+        assert_eq!(m.at_index(5), Some((&1, &2)));
+        assert!(m.insert(2, 4).is_none());
+        let v = m.at_index(0).unwrap();
+        assert!(v == (&1, &2) || v == (&2, &4));
+    }
 }
