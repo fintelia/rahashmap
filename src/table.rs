@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::heap::{Alloc, Heap, Layout};
+use std::heap::{Alloc, CollectionAllocErr, Global, Layout};
 
 use std::cmp;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::marker;
-use std::mem::{align_of, needs_drop, size_of};
 use std::mem;
+use std::mem::{align_of, needs_drop, size_of};
 use std::ops::{Deref, DerefMut};
 use std::ptr::{self, NonNull, Unique};
 
@@ -721,14 +721,15 @@ fn test_offset_calculation() {
 impl<K, V> RawTable<K, V> {
     /// Does not initialize the buckets. The caller should ensure they,
     /// at the very least, set every hash to EMPTY_BUCKET.
-    unsafe fn new_uninitialized(capacity: usize) -> RawTable<K, V> {
+    /// Returns an error if it cannot allocate or capacity overflows.
+    unsafe fn try_new_uninitialized(capacity: usize) -> Result<RawTable<K, V>, CollectionAllocErr> {
         if capacity == 0 {
-            return RawTable {
+            return Ok(RawTable {
                 size: 0,
                 capacity_mask: capacity.wrapping_sub(1),
                 hashes: TaggedHashUintPtr::new(EMPTY as *mut HashUint),
                 marker: marker::PhantomData,
-            };
+            });
         }
 
         // No need for `checked_mul` before a more restrictive check performed
@@ -750,29 +751,37 @@ impl<K, V> RawTable<K, V> {
             pairs_size,
             align_of::<(K, V)>(),
         );
-        assert!(!oflo, "capacity overflow");
+        if oflo {
+            return Err(CollectionAllocErr::CapacityOverflow);
+        }
 
         // One check for overflow that covers calculation and rounding of size.
         let size_of_bucket = size_of::<HashUint>()
             .checked_add(size_of::<(K, V)>())
-            .unwrap();
-        assert!(
-            size >= capacity
-                .checked_mul(size_of_bucket)
-                .expect("capacity overflow"),
-            "capacity overflow"
-        );
+            .ok_or(CollectionAllocErr::CapacityOverflow)?;
+        let capacity_mul_size_of_bucket = capacity.checked_mul(size_of_bucket);
+        if capacity_mul_size_of_bucket.is_none() || size < capacity_mul_size_of_bucket.unwrap() {
+            return Err(CollectionAllocErr::CapacityOverflow);
+        }
 
-        let buffer = Heap.alloc(Layout::from_size_align(size, alignment).unwrap())
-            .unwrap_or_else(|e| Heap.oom(e));
+        let buffer = Global.alloc(Layout::from_size_align(size, alignment)
+            .map_err(|_| CollectionAllocErr::CapacityOverflow)?)?;
 
-        let hashes = buffer as *mut HashUint;
-
-        RawTable {
+        Ok(RawTable {
             capacity_mask: capacity.wrapping_sub(1),
             size: 0,
-            hashes: TaggedHashUintPtr::new(hashes),
+            hashes: TaggedHashUintPtr::new(buffer.cast().as_ptr()),
             marker: marker::PhantomData,
+        })
+    }
+
+    /// Does not initialize the buckets. The caller should ensure they,
+    /// at the very least, set every hash to EMPTY_BUCKET.
+    unsafe fn new_uninitialized(capacity: usize) -> RawTable<K, V> {
+        match Self::try_new_uninitialized(capacity) {
+            Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),
+            Err(CollectionAllocErr::AllocErr) => Global.oom(),
+            Ok(table) => table,
         }
     }
 
@@ -1122,7 +1131,7 @@ impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
 
 impl<'a, K: 'a, V: 'a> Drop for Drain<'a, K, V> {
     fn drop(&mut self) {
-        for _ in self {}
+        self.for_each(drop);
     }
 }
 
@@ -1183,8 +1192,8 @@ unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for RawTable<K, V> {
         debug_assert!(!oflo, "should be impossible");
 
         unsafe {
-            Heap.dealloc(
-                self.hashes.ptr() as *mut u8,
+            Global.dealloc(
+                NonNull::new_unchecked(self.hashes.ptr()).as_opaque(),
                 Layout::from_size_align(size, align).unwrap(),
             );
             // Remember how everything was allocated out of one buffer
