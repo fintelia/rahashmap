@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::heap::{Alloc, CollectionAllocErr, Global, Layout};
+use std::heap::{Alloc, CollectionAllocErr, Global, Layout, oom};
 
 use std::cmp;
 use std::hash::{BuildHasher, Hash, Hasher};
@@ -780,7 +780,7 @@ impl<K, V> RawTable<K, V> {
     unsafe fn new_uninitialized(capacity: usize) -> RawTable<K, V> {
         match Self::try_new_uninitialized(capacity) {
             Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),
-            Err(CollectionAllocErr::AllocErr) => Global.oom(),
+            Err(CollectionAllocErr::AllocErr) => oom(),
             Ok(table) => table,
         }
     }
