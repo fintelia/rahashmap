@@ -664,6 +664,7 @@ fn calculate_layout<K, V>(capacity: usize) -> Result<(Layout, usize), LayoutErr>
 }
 
 pub(crate) enum Fallibility {
+    #[allow(unused)]
     Fallible,
     Infallible,
 }
@@ -741,6 +742,7 @@ impl<K, V> RawTable<K, V> {
 
     /// Tries to create a new raw table from a given capacity. If it cannot allocate,
     /// it returns with AllocErr.
+    #[allow(unused)]
     pub fn try_new(capacity: usize) -> Result<RawTable<K, V>, CollectionAllocErr> {
         Self::new_internal(capacity, Fallible)
     }
