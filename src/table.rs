@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::alloc::{handle_alloc_error, Alloc, CollectionAllocErr, Global, Layout, LayoutErr};
+use std::alloc::{Global, Alloc, Layout, LayoutErr, handle_alloc_error};
+use std::collections::CollectionAllocErr;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::marker;
 use std::mem;
