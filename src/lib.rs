@@ -1,3 +1,4 @@
+#![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
 #![feature(dropck_eyepatch)]
 #![feature(hashmap_internals)]

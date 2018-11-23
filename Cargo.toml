@@ -1,6 +1,6 @@
 [package]
 name = "rahashmap"
-version = "0.2.12"
+version = "0.2.13"
 authors = ["Jonathan Behrens <fintelia@gmail.com>", "The Rust Project Developers"]
 license = "MIT/Apache-2.0"
 description = "Fork of standard library HashMap with additional functionality."
