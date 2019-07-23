@@ -2509,8 +2509,7 @@ impl RandomState {
         // increment one of the seeds on every RandomState creation, giving
         // every corresponding HashMap a different iteration order.
         thread_local!(static KEYS: Cell<(u64, u64)> = {
-            let r = rand::OsRng::new();
-            let mut r = r.expect("failed to create an OS RNG");
+            let mut r = rand::thread_rng();
             Cell::new((r.gen(), r.gen()))
         });
 
