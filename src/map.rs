@@ -11,8 +11,9 @@
 use self::Entry::*;
 use self::VacantEntryState::*;
 
-use std::cell::Cell;
+use rand::{self, Rng};
 use std::borrow::Borrow;
+use std::cell::Cell;
 use std::cmp::max;
 use std::fmt::{self, Debug};
 #[allow(deprecated)]
@@ -20,10 +21,9 @@ use std::hash::{BuildHasher, Hash, Hasher, SipHasher13};
 use std::iter::{FromIterator, FusedIterator};
 use std::mem::{self, replace};
 use std::ops::{Deref, Index};
-use rand::{self, Rng};
 
-use super::table::{self, Bucket, EmptyBucket, FullBucket, FullBucketMut, RawTable, SafeHash};
 use super::table::BucketState::{Empty, Full};
+use super::table::{self, Bucket, EmptyBucket, FullBucket, FullBucketMut, RawTable, SafeHash};
 
 const MIN_NONZERO_RAW_CAPACITY: usize = 32; // must be a power of two
 
@@ -812,7 +812,8 @@ where
     pub fn reserve(&mut self, additional: usize) {
         let remaining = self.capacity() - self.len(); // this can't overflow
         if remaining < additional {
-            let min_cap = self.len()
+            let min_cap = self
+                .len()
                 .checked_add(additional)
                 .expect("reserve overflow");
             let raw_cap = self.resize_policy.raw_capacity(min_cap);
@@ -2663,11 +2664,11 @@ fn assert_covariance() {
 
 #[cfg(test)]
 mod test_map {
-    use super::HashMap;
     use super::Entry::{Occupied, Vacant};
+    use super::HashMap;
     use super::RandomState;
-    use std::cell::RefCell;
     use rand::{thread_rng, Rng};
+    use std::cell::RefCell;
 
     #[test]
     fn test_zero_capacities() {
@@ -3594,7 +3595,6 @@ mod test_map {
         }
         panic!("Adaptive early resize failed");
     }
-
 
     #[test]
     fn test_remove_at_index() {

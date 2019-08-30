@@ -9,8 +9,8 @@
 extern crate rand;
 
 mod bench;
-mod table;
 mod map;
+mod table;
 
 pub use map::*;
 pub use table::{make_hash, SafeHash};
